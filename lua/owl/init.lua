@@ -46,6 +46,7 @@ end
 function M.stop_all()
   markdown.stop_all()
   latex.stop_all()
+  require('owl.browser').close_all()
   server.stop()
 end
 

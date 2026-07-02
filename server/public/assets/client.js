@@ -25,6 +25,11 @@
     if (state) $conn.classList.add(state);
   };
 
+  // Reflection suppression: when we receive a scroll from the other side,
+  // ignore our own scroll events for a short window so we don't ping-pong.
+  let suppressUntil = 0;
+  const SUPPRESS_MS = 220;
+
   // --------------------------------------------------------------------------
   // Markdown mode
   // --------------------------------------------------------------------------
@@ -33,6 +38,7 @@
     let renderTimer = 0;
     let pendingContent = null;
     let lastRender = 0;
+    let ws = null;   // captured below when connectWS runs
 
     const requestRender = async (content) => {
       pendingContent = content;
@@ -72,7 +78,6 @@
     };
 
     const scrollToLine = (line) => {
-      // Find nearest previous data-line
       const els = $content.querySelectorAll('[data-line]');
       let target = null;
       for (const el of els) {
@@ -83,11 +88,36 @@
       $content.querySelectorAll('.owl-cursor').forEach(e => e.classList.remove('owl-cursor'));
       if (target) {
         target.classList.add('owl-cursor');
+        // suppress our own scroll-emit for a beat so we don't ping-pong
+        suppressUntil = Date.now() + SUPPRESS_MS;
         target.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     };
 
-    connectWS({
+    // Detect user scrolling and tell nvim the topmost visible source line.
+    let scrollEmitTimer = 0;
+    const emitBrowserScroll = () => {
+      if (Date.now() < suppressUntil) return;
+      if (!ws || ws.readyState !== 1) return;
+      // Find the topmost [data-line] whose top is near the viewport top
+      const els = $content.querySelectorAll('[data-line]');
+      let picked = null;
+      const threshold = 40;
+      for (const el of els) {
+        const r = el.getBoundingClientRect();
+        if (r.top >= threshold) { break; }
+        picked = el;
+      }
+      if (!picked) return;
+      const line = Number(picked.getAttribute('data-line')) || 0;
+      ws.send(JSON.stringify({ type: 'browser-scroll', line }));
+    };
+    window.addEventListener('scroll', () => {
+      clearTimeout(scrollEmitTimer);
+      scrollEmitTimer = setTimeout(emitBrowserScroll, 90);
+    }, { passive: true });
+
+    ws = connectWS({
       onInit: (msg) => {
         if (msg.mode === 'markdown') requestRender(msg.content);
         setStatus('connected');
@@ -123,10 +153,12 @@
   function connectWS(handlers) {
     let ws = null;
     let attempt = 0;
+    const ref = {};   // stable ref: { send, readyState } proxy
 
     function open() {
       setConn('connecting');
       ws = new WebSocket(`ws://${location.host}/ws`);
+      ref.send = (msg) => ws.send(msg);
 
       ws.addEventListener('open', () => {
         attempt = 0;
@@ -156,5 +188,8 @@
     }
 
     open();
+    // Return a proxy that always talks to the currently-open socket
+    Object.defineProperty(ref, 'readyState', { get: () => (ws ? ws.readyState : 3) });
+    return ref;
   }
 })();

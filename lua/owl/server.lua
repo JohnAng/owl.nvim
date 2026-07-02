@@ -9,14 +9,38 @@ local config = require('owl.config')
 local M = {}
 
 local state = {
-  job_id  = nil,
-  pid     = nil,
-  host    = nil,
-  port    = nil,
-  ready   = false,
-  waiters = {},   -- functions called when the server becomes ready
-  ws      = nil,  -- reserved for future in-process WS (we use jobstart shell now)
+  job_id    = nil,
+  pid       = nil,
+  host      = nil,
+  port      = nil,
+  ready     = false,
+  waiters   = {},
+  listeners = {},   -- id -> function(event_table)
 }
+
+-- Register a listener for server -> nvim events (OWL_EVENT lines on stdout).
+-- Returns an unsubscribe function.
+function M.on_event(id, cb)
+  state.listeners[id] = cb
+  return function() state.listeners[id] = nil end
+end
+
+local function dispatch_event(evt)
+  local cb = state.listeners[evt.id]
+  if cb then pcall(cb, evt) end
+end
+
+local function parse_event_line(line)
+  -- Format: OWL_EVENT type=<t> id=<id> key=val key=val ...
+  local rest = line:match('^OWL_EVENT%s+(.+)$')
+  if not rest then return nil end
+  local evt = {}
+  for k, v in rest:gmatch('([%w_]+)=([^%s]+)') do
+    evt[k] = tonumber(v) or v
+  end
+  if not evt.id or not evt.type then return nil end
+  return evt
+end
 
 -- Locate this plugin's root (walk up from lua/owl/server.lua)
 -- File path is: <root>/lua/owl/server.lua
@@ -105,7 +129,12 @@ function M.ensure_started(cb)
             log.info(string.format('server ready on %s:%d (pid %d)', host, state.port, state.pid))
             resolve_waiters(true)
           else
-            log.debug('server:', line)
+            local evt = parse_event_line(line)
+            if evt then
+              vim.schedule(function() dispatch_event(evt) end)
+            else
+              log.debug('server:', line)
+            end
           end
         end
       end

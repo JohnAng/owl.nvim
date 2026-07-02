@@ -38,8 +38,35 @@ local function push_update(bufnr, entry)
 end
 
 local function push_scroll(entry)
+  -- Suppress if we just applied an external scroll (anti ping-pong).
+  if entry.suppress_until and vim.loop.hrtime() < entry.suppress_until then return end
   local line = vim.api.nvim_win_get_cursor(0)[1] - 1
+  entry.last_sent_line = line
   server.post('/nvim/scroll', { id = entry.id, line = line })
+end
+
+-- Callback for OWL_EVENT scroll from browser -> move cursor.
+local function on_browser_scroll(entry, line_zero)
+  local bufnr = entry.bufnr
+  if not vim.api.nvim_buf_is_valid(bufnr) then return end
+  local target_line = math.max(1, (line_zero or 0) + 1)
+  local last = vim.api.nvim_buf_line_count(bufnr)
+  if target_line > last then target_line = last end
+
+  -- Find a window showing this buffer (avoid tabpage churn)
+  local wins = vim.fn.win_findbuf(bufnr)
+  if #wins == 0 then return end
+  local win = wins[1]
+
+  -- Suppress our own scroll re-emit for a beat
+  entry.suppress_until = vim.loop.hrtime() + 220e6   -- 220ms in ns
+
+  local cur = vim.api.nvim_win_get_cursor(win)
+  if cur[1] ~= target_line then
+    vim.api.nvim_win_set_cursor(win, { target_line, 0 })
+    -- Center-ish scroll for pleasant UX
+    vim.api.nvim_win_call(win, function() vim.cmd('normal! zz') end)
+  end
 end
 
 function M.is_active(bufnr) return active[bufnr] ~= nil end
@@ -73,7 +100,7 @@ function M.start(bufnr)
 
     -- Give the server a beat to register before browser attaches.
     vim.defer_fn(function()
-      browser.open(server.url('/preview/md/' .. id))
+      browser.open(id, server.url('/preview/md/' .. id))
     end, 150)
   end)
 
@@ -110,7 +137,14 @@ function M.start(bufnr)
     callback = function() M.stop(bufnr) end,
   })
 
-  active[bufnr] = { id = id, augroup = aug, timer = timer, filepath = filepath }
+  local entry = { id = id, augroup = aug, timer = timer, filepath = filepath, bufnr = bufnr }
+  active[bufnr] = entry
+
+  -- Subscribe to server events (scroll from browser)
+  entry.unsub = server.on_event(id, function(evt)
+    if evt.type == 'scroll' then on_browser_scroll(entry, evt.line) end
+  end)
+
   log.info('markdown preview started for', filepath)
 end
 
@@ -120,7 +154,9 @@ function M.stop(bufnr)
   if not entry then return end
   pcall(vim.api.nvim_del_augroup_by_id, entry.augroup)
   if entry.timer then entry.timer:stop(); entry.timer:close() end
+  if entry.unsub then entry.unsub() end
   server.post('/nvim/unregister', { id = entry.id })
+  browser.close(entry.id)
   active[bufnr] = nil
   log.info('markdown preview stopped')
 end

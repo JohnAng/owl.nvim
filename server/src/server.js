@@ -130,6 +130,12 @@ wss.on('connection', (ws, req) => {
       state.clients.get(msg.id).add(ws);
       const buf = state.buffers.get(msg.id);
       if (buf) sendInitial(ws, buf);
+    } else if (msg.type === 'browser-scroll' && ws._owlId) {
+      // Browser tells us the user scrolled to a line. Emit an event line
+      // on stdout so the nvim plugin (which owns the server process) can
+      // read it via jobstart on_stdout and move the cursor.
+      const line = Math.max(0, parseInt(msg.line, 10) || 0);
+      process.stdout.write(`OWL_EVENT type=scroll id=${ws._owlId} line=${line}\n`);
     }
   });
 

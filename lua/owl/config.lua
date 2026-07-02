@@ -8,18 +8,24 @@ M.defaults = {
     node = 'node',      -- override with an absolute path if you have multiple
   },
 
-  -- Browser
+  -- Preview window management
+  window = {
+    -- 'tiled'    : auto-tile terminal + browser 50/50 (Windows/WSL only for now)
+    -- 'external' : just open the URL, user manages windows
+    -- 'off'      : don't launch anything, print the URL
+    mode = 'tiled',
+    side = 'right',           -- 'right' | 'left' — where the preview sits
+    width_percent = 50,       -- how much of the screen the preview takes
+    -- Reserved for later per-OS tuning
+    monitor = 'primary',      -- 'primary' | 'current' | 1..N
+  },
+
+  -- Plain fallback opener (used when window.mode ~= 'tiled')
   browser = {
-    -- 'auto' picks per-OS default:
-    --   Windows -> start (default handler)
-    --   macOS   -> open
-    --   Linux   -> xdg-open
-    --   WSL     -> wslview if present, else PowerShell start
+    -- 'auto' picks per-OS default handler (start / open / xdg-open / wslview)
     cmd = 'auto',
-    -- If set, will be used verbatim: 'brave.exe', 'msedge.exe', 'firefox', 'chromium', etc.
+    -- Override the plain-open command: 'brave.exe', 'firefox', etc.
     override = nil,
-    -- Open the preview in a new window (--new-window equivalents where supported).
-    new_window = false,
   },
 
   -- Markdown

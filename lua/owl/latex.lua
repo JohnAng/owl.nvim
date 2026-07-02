@@ -194,7 +194,7 @@ local function launch_viewer(entry)
         pdfPath  = pdf,
       })
       vim.defer_fn(function()
-        browser.open(server.url('/preview/tex/' .. entry.id))
+        browser.open(entry.id, server.url('/preview/tex/' .. entry.id))
       end, 150)
     end)
     return
@@ -287,6 +287,7 @@ function M.stop(bufnr)
   if entry.augroup     then pcall(vim.api.nvim_del_augroup_by_id, entry.augroup) end
   if entry.viewer == 'browser' then
     server.post('/nvim/unregister', { id = entry.id })
+    browser.close(entry.id)
   end
   vim.diagnostic.reset(ns, bufnr)
   active[bufnr] = nil
