@@ -1,0 +1,33 @@
+{
+  "name": "owl-server",
+  "version": "0.1.0",
+  "description": "Bundled preview server for owl.nvim (markdown live preview + LaTeX signaling).",
+  "private": true,
+  "main": "src/server.js",
+  "bin": {
+    "owl-server": "src/server.js"
+  },
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "chokidar": "^3.6.0",
+    "express": "^4.19.2",
+    "ws": "^8.17.0",
+    "markdown-it": "^14.1.0",
+    "markdown-it-footnote": "^4.0.0",
+    "markdown-it-task-lists": "^2.1.1",
+    "markdown-it-deflist": "^3.0.0",
+    "markdown-it-mark": "^4.0.0",
+    "markdown-it-emoji": "^3.0.0",
+    "markdown-it-container": "^4.0.0",
+    "markdown-it-attrs": "^4.1.6",
+    "@vscode/markdown-it-katex": "^1.1.0",
+    "katex": "^0.16.11",
+    "mermaid": "^10.9.1",
+    "highlight.js": "^11.9.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

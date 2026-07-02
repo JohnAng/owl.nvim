@@ -1,0 +1,123 @@
+*owl.txt*    Markdown and LaTeX live preview for Neovim
+
+==============================================================================
+CONTENTS                                                          *owl-contents*
+
+  1. Introduction ........................ |owl-intro|
+  2. Requirements ........................ |owl-requirements|
+  3. Setup ............................... |owl-setup|
+  4. Commands ............................ |owl-commands|
+  5. Configuration ....................... |owl-config|
+  6. Health checks ....................... |owl-health|
+  7. Architecture ........................ |owl-arch|
+
+==============================================================================
+1. INTRODUCTION                                                     *owl-intro*
+
+owl.nvim provides live preview for two academic writing formats:
+
+  - Markdown, rendered in a browser panel with math (KaTeX), diagrams
+    (Mermaid), syntax highlighting, callouts, footnotes, wikilinks and
+    citations from a sibling `.bib` file.
+
+  - LaTeX, compiled continuously with `latexmk -pvc` and displayed in your
+    platform's best PDF viewer (Sumatra / zathura / Skim / sioyek) with
+    SyncTeX support. Falls back to browser + pdf.js if no native viewer.
+
+A single Node.js process, bundled in `<plugin>/server/`, coordinates all
+buffers and browser tabs.
+
+==============================================================================
+2. REQUIREMENTS                                                *owl-requirements*
+
+  - Neovim >= 0.10
+  - Node.js >= 18
+  - For LaTeX: `latexmk` + a TeX engine (default xelatex)
+  - For LaTeX with SyncTeX: at least one of Sumatra / zathura / Skim / sioyek
+
+Run `:checkhealth owl` to verify.
+
+==============================================================================
+3. SETUP                                                            *owl-setup*
+
+With lazy.nvim: >lua
+
+  {
+    'JohnAng/owl.nvim',
+    build = function()
+      if package.config:sub(1,1) == '\\' then
+        vim.fn.system({ 'powershell', '-File', 'scripts/postinstall.ps1' })
+      else
+        vim.fn.system({ 'bash', 'scripts/postinstall.sh' })
+      end
+    end,
+    opts = {},
+  }
+<
+
+==============================================================================
+4. COMMANDS                                                       *owl-commands*
+
+*:OwlPreview*        Start preview for current buffer
+*:OwlStop*           Stop preview for current buffer
+*:OwlToggle*         Toggle preview
+*:OwlStopAll*        Stop everything and shut server down
+*:OwlSyncTexHere*    Force forward-SyncTeX to current cursor position
+*:OwlServerUrl*      Print server URL
+
+==============================================================================
+5. CONFIGURATION                                                    *owl-config*
+
+Pass a table to `require('owl').setup({...})`. Full defaults: >lua
+
+  {
+    server = { host = '127.0.0.1', port = 0, node = 'node' },
+    browser = { cmd = 'auto', override = nil, new_window = false },
+    markdown = {
+      trigger = 'live',      -- 'live' | 'save'
+      scroll_sync = true,
+      auto_bib = true,
+      bib = nil,
+    },
+    latex = {
+      viewer = 'auto',       -- 'auto' | 'browser' | 'sumatra' | 'zathura' | 'skim' | 'sioyek'
+      engine = 'xelatex',    -- 'xelatex' | 'pdflatex' | 'lualatex'
+      synctex = true,
+      aux_dir = '.owl-build',
+      latexmk_extra = {},
+    },
+    diagnostics = {
+      enabled = true,
+      signs = true,
+      virtual_text = { spacing = 2, prefix = '' },
+    },
+    log_level = 'info',      -- 'trace' | 'debug' | 'info' | 'warn' | 'error'
+    auto_shutdown = true,
+  }
+<
+
+==============================================================================
+6. HEALTH                                                           *owl-health*
+
+`:checkhealth owl` reports:
+  - node presence + version
+  - server files + `node_modules/`
+  - `latexmk` and the configured engine
+  - PDF viewer detection per OS
+  - Runtime status of the server
+
+==============================================================================
+7. ARCHITECTURE                                                       *owl-arch*
+
+Layers: >
+  Neovim (Lua)
+     |
+     |-- markdown module ---HTTP--> Node server ---WS---> Browser
+     |
+     `-- latex module ------------> latexmk -pvc ---> PDF
+                                      |
+                                      `-> Native viewer (auto-reload + SyncTeX)
+                                      `-> Browser pdf.js iframe (fallback)
+<
+
+vim:tw=78:ts=8:ft=help:norl:
