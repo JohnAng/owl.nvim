@@ -1,8 +1,12 @@
-/* owl.nvim client styles — Predawn-inspired dark theme */
+/* owl.nvim client styles — Predawn-inspired dark theme
+   Full-width rendering; wide elements scroll INSIDE their container. */
+
 :root {
   --bg:         #282828;
   --bg-alt:     #1e1e1e;
+  --bg-elev:    #2f2f2f;
   --fg:         #f1f1f1;
+  --fg-dim:     #d0d0d0;
   --muted:      #8b8b8b;
   --subtle:     #3e3e3e;
   --blue:       #8197bf;
@@ -12,116 +16,208 @@
   --orange:     #e0a374;
   --purple:     #b294bb;
   --border:     #3e3e3e;
-  --code-bg:    #1e1e1e;
+  --code-bg:    #1a1a1a;
   --link:       #8197bf;
   --link-hover: #f4bf75;
-  --max:        820px;
+
+  --pad-x:      max(24px, 4vw);
+  --pad-x-sm:   max(16px, 3vw);
+  --gap:        1.2rem;
+
+  --font-sans:  -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono:  "JetBrainsMono Nerd Font", "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Consolas, Menlo, monospace;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, "Times New Roman", serif;
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
+html, body { margin: 0; padding: 0; overflow-x: hidden; /* never let the page scroll horizontally */ }
 body {
   background: var(--bg);
   color: var(--fg);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 16px;
-  line-height: 1.65;
+  line-height: 1.7;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* topbar */
+/* -------------------------------------------------------------------------- */
+/* topbar                                                                     */
+/* -------------------------------------------------------------------------- */
 .topbar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--bg-alt);
+  position: sticky; top: 0; z-index: 20;
+  background: rgba(30,30,30,.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
-  padding: 6px 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--muted);
+  padding: 8px var(--pad-x-sm);
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px; color: var(--muted);
+  letter-spacing: .02em;
 }
 .topbar .dot {
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--red);
-  transition: background .3s;
+  box-shadow: 0 0 0 0 rgba(207,106,76,.4);
+  transition: background .3s, box-shadow .3s;
 }
-.topbar .dot.connected  { background: var(--green); }
+.topbar .dot.connected  { background: var(--green); box-shadow: 0 0 6px rgba(153,173,106,.35); }
 .topbar .dot.connecting { background: var(--yellow); }
 .topbar .spacer { flex: 1; }
 .muted { color: var(--muted); }
 .pulse { animation: pulse .8s ease-out; }
 @keyframes pulse { from { color: var(--yellow); } to { color: var(--muted); } }
 
-/* landing */
+/* -------------------------------------------------------------------------- */
+/* landing                                                                    */
+/* -------------------------------------------------------------------------- */
 .landing { max-width: 640px; margin: 12vh auto; padding: 0 24px; }
 .landing h1 { font-weight: 300; font-size: 40px; margin-bottom: 12px; color: var(--yellow); }
 
-/* markdown body */
+/* -------------------------------------------------------------------------- */
+/* markdown body — full width, generous padding                               */
+/* -------------------------------------------------------------------------- */
 .markdown-body {
-  max-width: var(--max);
-  margin: 0 auto;
-  padding: 32px 40px 128px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;                       /* important: allows children to shrink */
+  padding: 48px var(--pad-x) 20vh;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
 }
-.markdown-body h1, .markdown-body h2, .markdown-body h3,
-.markdown-body h4, .markdown-body h5, .markdown-body h6 {
+
+/* headings */
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
   color: var(--yellow);
   font-weight: 600;
-  margin-top: 1.6em;
-  margin-bottom: .6em;
+  margin-top: 1.8em;
+  margin-bottom: .55em;
   line-height: 1.25;
+  scroll-margin-top: 60px;              /* so anchor jumps clear the topbar */
 }
-.markdown-body h1 { font-size: 2em; border-bottom: 1px solid var(--border); padding-bottom: .3em; }
-.markdown-body h2 { font-size: 1.5em; border-bottom: 1px solid var(--border); padding-bottom: .2em; }
-.markdown-body h3 { font-size: 1.25em; }
-.markdown-body a { color: var(--link); text-decoration: none; }
-.markdown-body a:hover { color: var(--link-hover); text-decoration: underline; }
+.markdown-body h1 { font-size: 2.1em; border-bottom: 1px solid var(--border); padding-bottom: .3em; letter-spacing: -.01em; }
+.markdown-body h2 { font-size: 1.55em; border-bottom: 1px solid var(--border); padding-bottom: .2em; letter-spacing: -.005em; }
+.markdown-body h3 { font-size: 1.28em; color: var(--orange); }
+.markdown-body h4 { font-size: 1.12em; color: var(--fg-dim); text-transform: uppercase; letter-spacing: .05em; }
+.markdown-body h5 { font-size: 1.02em; color: var(--fg-dim); }
+.markdown-body h6 { font-size: .95em;  color: var(--muted);  }
+
+/* body prose */
+.markdown-body p,
+.markdown-body ul,
+.markdown-body ol,
+.markdown-body dl { margin: 0 0 var(--gap); }
+.markdown-body ul, .markdown-body ol { padding-left: 1.6em; }
+.markdown-body li { margin: .3em 0; }
+.markdown-body li > p { margin: .3em 0; }
+
+/* links */
+.markdown-body a {
+  color: var(--link);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color .12s, border-color .12s;
+}
+.markdown-body a:hover { color: var(--link-hover); border-bottom-color: var(--link-hover); }
+
+/* inline code */
 .markdown-body code {
   background: var(--code-bg);
   color: var(--orange);
   padding: 2px 6px;
   border-radius: 4px;
-  font-family: "JetBrainsMono Nerd Font", "Fira Code", Consolas, Menlo, monospace;
-  font-size: .92em;
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: .9em;
+  word-break: break-word;
 }
+
+/* code blocks: scroll inside their own box, never the page */
 .markdown-body pre {
   background: var(--code-bg);
-  padding: 14px 16px;
-  border-radius: 6px;
-  overflow-x: auto;
+  padding: 14px 18px;
+  border-radius: 8px;
   border: 1px solid var(--border);
+  overflow-x: auto;                      /* horizontal scroll INSIDE the block */
+  max-width: 100%;
+  margin: var(--gap) 0;
+  line-height: 1.55;
+  font-size: .94em;
+  box-shadow: 0 1px 2px rgba(0,0,0,.2);
 }
-.markdown-body pre code { background: transparent; color: var(--fg); padding: 0; font-size: .92em; }
+.markdown-body pre code {
+  background: transparent;
+  color: var(--fg);
+  padding: 0;
+  border: 0;
+  font-size: 1em;
+  white-space: pre;                     /* preserve indentation, allow scroll */
+}
+
+/* blockquote */
 .markdown-body blockquote {
   border-left: 3px solid var(--subtle);
   color: var(--muted);
   padding: .2em 1em;
-  margin: 1em 0;
+  margin: var(--gap) 0;
+  background: var(--bg-alt);
+  border-radius: 0 6px 6px 0;
+}
+
+/* tables: horizontally scrollable container */
+.markdown-body .table-wrap,
+.markdown-body table {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  display: block;
 }
 .markdown-body table {
   border-collapse: collapse;
-  margin: 1em 0;
-  width: 100%;
+  margin: var(--gap) 0;
+  font-size: .95em;
 }
+.markdown-body thead { display: table-header-group; }
+.markdown-body tbody { display: table-row-group; }
+.markdown-body tr    { display: table-row; }
 .markdown-body th, .markdown-body td {
+  display: table-cell;
   border: 1px solid var(--border);
-  padding: 6px 10px;
+  padding: 8px 12px;
+  vertical-align: top;
 }
-.markdown-body th { background: var(--bg-alt); color: var(--yellow); }
-.markdown-body hr { border: 0; border-top: 1px solid var(--border); margin: 2em 0; }
-.markdown-body img { max-width: 100%; }
+.markdown-body th { background: var(--bg-alt); color: var(--yellow); text-align: left; font-weight: 600; }
+.markdown-body tr:nth-child(even) td { background: rgba(255,255,255,.015); }
 
-/* callouts */
+/* hr */
+.markdown-body hr { border: 0; border-top: 1px solid var(--border); margin: 2.5em 0; }
+
+/* images */
+.markdown-body img { max-width: 100%; height: auto; border-radius: 4px; }
+
+/* -------------------------------------------------------------------------- */
+/* callouts                                                                   */
+/* -------------------------------------------------------------------------- */
 .callout {
   border-left: 4px solid var(--blue);
   background: var(--bg-alt);
-  padding: .6em 1em;
-  margin: 1em 0;
-  border-radius: 4px;
+  padding: .8em 1.1em;
+  margin: var(--gap) 0;
+  border-radius: 0 6px 6px 0;
 }
-.callout-title { text-transform: uppercase; font-size: .82em; color: var(--blue); margin-bottom: .3em; }
+.callout-title {
+  text-transform: uppercase;
+  font-size: .78em;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: var(--blue);
+  margin-bottom: .4em;
+}
 .callout-note      { border-color: var(--blue);   }
 .callout-note      .callout-title { color: var(--blue);   }
 .callout-tip       { border-color: var(--green);  }
@@ -133,26 +229,77 @@ body {
 .callout-info      { border-color: var(--purple); }
 .callout-info      .callout-title { color: var(--purple); }
 
-/* citations */
-.citation { color: var(--yellow); font-weight: 600; }
-.citation a { color: inherit; }
-.references { margin-top: 3em; padding-top: 1em; border-top: 1px solid var(--border); }
-.references h2 { color: var(--yellow); }
-.references ol { list-style: none; padding-left: 0; }
-.references li { margin: .5em 0; color: var(--muted); }
-.references .ref-num { color: var(--yellow); margin-right: .3em; }
+/* -------------------------------------------------------------------------- */
+/* citations & references                                                     */
+/* -------------------------------------------------------------------------- */
+.citation { color: var(--yellow); font-weight: 600; font-size: .85em; }
+.citation a { color: inherit; text-decoration: none; }
+.references { margin-top: 3.5em; padding-top: 1.5em; border-top: 1px solid var(--border); }
+.references h2 { color: var(--yellow); border: none; padding: 0; }
+.references ol { list-style: none; padding-left: 0; margin-top: 1em; }
+.references li { margin: .6em 0; color: var(--muted); line-height: 1.5; }
+.references .ref-num { color: var(--yellow); margin-right: .5em; font-weight: 700; }
 
 /* task lists */
-.markdown-body input[type="checkbox"] { accent-color: var(--yellow); margin-right: .4em; }
+.markdown-body input[type="checkbox"] {
+  accent-color: var(--yellow);
+  margin-right: .5em;
+  transform: translateY(1px);
+}
 
-/* mermaid + katex tweaks */
-pre.mermaid { background: transparent; text-align: center; padding: 12px; }
-.katex-display { overflow-x: auto; overflow-y: hidden; }
+/* mermaid — center + full width */
+pre.mermaid {
+  background: transparent;
+  border: none;
+  text-align: center;
+  padding: 12px;
+  overflow-x: auto;
+}
+pre.mermaid svg { max-width: 100%; height: auto; }
 
-/* PDF frame (LaTeX mode) */
+/* katex */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: .3em 0;
+  margin: 1.2em 0 !important;
+}
+.katex { font-size: 1.05em; }
+
+/* -------------------------------------------------------------------------- */
+/* PDF frame (LaTeX mode)                                                     */
+/* -------------------------------------------------------------------------- */
 .mode-tex { height: 100vh; overflow: hidden; }
 .pdf-frame { height: calc(100vh - 32px); }
 .pdf-frame iframe { border: 0; width: 100%; height: 100%; background: var(--bg-alt); }
 
-/* scroll-sync highlight */
-.owl-line.owl-cursor { background: rgba(244, 191, 117, .08); border-radius: 4px; }
+/* -------------------------------------------------------------------------- */
+/* scroll-sync highlight — subtle, non-jarring                                */
+/* -------------------------------------------------------------------------- */
+.owl-line { transition: background-color .3s ease; border-radius: 4px; }
+.owl-line.owl-cursor {
+  background: rgba(244, 191, 117, .06);
+  outline: 1px solid rgba(244, 191, 117, .15);
+}
+
+/* -------------------------------------------------------------------------- */
+/* small screens                                                              */
+/* -------------------------------------------------------------------------- */
+@media (max-width: 700px) {
+  body { font-size: 15px; line-height: 1.65; }
+  .markdown-body { padding: 32px var(--pad-x-sm) 15vh; }
+  .markdown-body h1 { font-size: 1.7em; }
+  .markdown-body h2 { font-size: 1.35em; }
+}
+
+/* -------------------------------------------------------------------------- */
+/* wide screens — cap prose to a comfortable reading measure but let          */
+/* wide elements (code, tables, diagrams) breathe outside that measure         */
+/* -------------------------------------------------------------------------- */
+@media (min-width: 1400px) {
+  .markdown-body {
+    /* Give prose a reading-friendly width, wide elements extend via their own overflow */
+    padding-left:  max(48px, calc((100vw - 1240px) / 2));
+    padding-right: max(48px, calc((100vw - 1240px) / 2));
+  }
+}
