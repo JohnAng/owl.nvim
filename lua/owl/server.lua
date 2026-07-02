@@ -19,10 +19,11 @@ local state = {
 }
 
 -- Locate this plugin's root (walk up from lua/owl/server.lua)
+-- File path is: <root>/lua/owl/server.lua
+-- :p:h -> lua/owl,  :h -> lua,  :h -> <root>
 local function plugin_root()
   local this = debug.getinfo(1, 'S').source:sub(2)
-  local dir = vim.fn.fnamemodify(this, ':p:h:h:h:h') -- .../lua/owl/server.lua -> plugin root
-  return dir
+  return vim.fn.fnamemodify(this, ':p:h:h:h')
 end
 
 function M.plugin_root() return plugin_root() end
