@@ -25,7 +25,11 @@ end
 -- ---------------------------------------------------------------------------
 local function wslpath_w(p)
   local out = vim.fn.system({ 'wslpath', '-w', p })
-  return (out or ''):gsub('[\r\n]+$', '')
+  if vim.v.shell_error ~= 0 or not out or out == '' then
+    log.warn('wslpath -w failed for', p)
+    return p
+  end
+  return (out:gsub('[\r\n]+$', ''))
 end
 
 -- ---------------------------------------------------------------------------
@@ -45,54 +49,63 @@ function M.tile(id, url)
     return false
   end
 
-  -- The PS script argument list
+  -- In WSL, the -File path must be a Windows-visible path.
+  local file_arg = ps_script
+  if os_util.is_wsl() then file_arg = wslpath_w(ps_script) end
+
   local ps_args = {
     '-NoProfile', '-ExecutionPolicy', 'Bypass',
-    '-File', ps_script,
+    '-File', file_arg,
     '-Url', url,
     '-NvimPid', tostring(vim.fn.getpid()),
     '-BrowserSide',    opts.side or 'right',
     '-BrowserPercent', tostring(opts.width_percent or 50),
   }
 
-  -- In WSL, ps_script is a Linux path and powershell.exe cannot read it
-  -- directly. Convert to a Windows-visible path.
-  if os_util.is_wsl() then
-    ps_args[6] = wslpath_w(ps_script)   -- index 6 is the -File argument
-  end
-
-  -- Collect the OWL_BROWSER_PID / OWL_DATA_DIR markers from stdout
-  local seen = { pid = nil, data_dir = nil }
   local cmd = { 'powershell.exe' }
   for _, a in ipairs(ps_args) do table.insert(cmd, a) end
 
-  vim.fn.jobstart(cmd, {
+  log.info('tile: launching preview', url)
+  log.debug('tile cmd:', table.concat(cmd, ' '))
+
+  local seen = { pid = nil, data_dir = nil }
+  local stderr_lines = {}
+
+  local job = vim.fn.jobstart(cmd, {
     stdout_buffered = false,
     on_stdout = function(_, data)
       if not data then return end
       for _, line in ipairs(data) do
-        if line then
+        if line and line ~= '' then
           local pid = line:match('^OWL_BROWSER_PID=(%d+)')
           if pid then seen.pid = tonumber(pid) end
           local dd = line:match('^OWL_DATA_DIR=(.+)$')
           if dd then seen.data_dir = dd:gsub('[\r\n]+$', '') end
+          if not pid and not dd then log.debug('tile ps stdout:', line) end
         end
       end
-      if seen.pid or seen.data_dir then
-        tracked[id] = seen
-        log.debug('tile: tracked', id, seen)
-      end
+      if seen.pid or seen.data_dir then tracked[id] = seen end
     end,
     on_stderr = function(_, data)
       if not data then return end
       for _, line in ipairs(data) do
-        if line and line ~= '' then log.debug('tile ps stderr:', line) end
+        if line and line ~= '' then table.insert(stderr_lines, line) end
       end
     end,
     on_exit = function(_, code)
-      log.debug('tile: powershell exited', code)
+      if code ~= 0 then
+        log.warn(string.format('tile: powershell exited %d', code))
+      elseif not seen.pid then
+        log.warn('tile: powershell finished but returned no browser pid; browser may have failed to launch')
+      end
+      if #stderr_lines > 0 then log.warn('tile stderr:\n' .. table.concat(stderr_lines, '\n')) end
     end,
   })
+
+  if job <= 0 then
+    log.error('tile: jobstart(powershell.exe) failed — is powershell.exe on PATH?')
+    return false
+  end
 
   return true
 end
