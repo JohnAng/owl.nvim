@@ -17,14 +17,46 @@ function parseEntries(text) {
   // Strip comments (lines starting with %)
   text = text.replace(/^\s*%[^\n]*$/gm, '');
 
-  const re = /@(\w+)\s*\{\s*([^,\s]+)\s*,\s*([\s\S]*?)\n\}/g;
-  let m;
-  while ((m = re.exec(text)) !== null) {
-    const type = m[1].toLowerCase();
+  const len = text.length;
+  let i = 0;
+  while (i < len) {
+    // Find next '@'
+    const at = text.indexOf('@', i);
+    if (at < 0) break;
+    i = at + 1;
+
+    // Read entry type
+    let type = '';
+    while (i < len && /[A-Za-z]/.test(text[i])) type += text[i++];
+    if (!type) continue;
+    type = type.toLowerCase();
+
+    // Skip whitespace, expect '{'
+    while (i < len && /\s/.test(text[i])) i++;
+    if (text[i] !== '{') continue;
+    i++;
+
+    // Read entry body up to matching '}' with proper brace balance
+    let depth = 1;
+    let body = '';
+    while (i < len && depth > 0) {
+      const c = text[i];
+      if (c === '{') { depth++; body += c; i++; }
+      else if (c === '}') { depth--; if (depth === 0) { i++; break; } body += c; i++; }
+      else { body += c; i++; }
+    }
+    if (depth !== 0) continue;
     if (type === 'string' || type === 'preamble' || type === 'comment') continue;
-    const key = m[2];
-    const body = m[3];
-    const fields = parseFields(body);
+
+    // Body: "<key>, <field1> = <value1>, <field2> = <value2>, ..."
+    body = body.trim();
+    if (!body) continue;
+    const commaIdx = body.indexOf(',');
+    const key    = (commaIdx >= 0 ? body.slice(0, commaIdx) : body).trim();
+    const rest   = commaIdx >= 0 ? body.slice(commaIdx + 1) : '';
+    if (!key) continue;
+
+    const fields = parseFields(rest);
     entries.set(key, { type, key, fields });
   }
   return entries;

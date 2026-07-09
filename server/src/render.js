@@ -70,19 +70,15 @@ function baseMd() {
     return defaultFence(tokens, idx, options, env, self);
   };
 
-  // Wikilinks: [[name]] -> anchor
-  md.core.ruler.after('inline', 'wikilink', (state) => {
-    for (const tok of state.tokens) {
-      if (tok.type !== 'inline') continue;
-      for (const child of tok.children || []) {
-        if (child.type !== 'text') continue;
-        if (!child.content.includes('[[')) continue;
-        child.content = child.content.replace(
-          /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,
-          (_, target, label) => `[${label || target}](wiki:${encodeURIComponent(target)})`
-        );
-      }
-    }
+  // Wikilinks: [[name]] and [[name|label]] -> real markdown link.
+  // Must run BEFORE inline parsing so that the resulting [label](wiki:name)
+  // gets recognised as a link. Implemented as a source-level preprocessor.
+  md.core.ruler.before('normalize', 'wikilink', (state) => {
+    if (!state.src || state.src.indexOf('[[') === -1) return;
+    state.src = state.src.replace(
+      /\[\[([^\]|\n]+)(?:\|([^\]\n]+))?\]\]/g,
+      (_, target, label) => `[${label || target}](wiki:${encodeURIComponent(target)})`
+    );
   });
 
   // GitHub-alerts syntax: > [!NOTE] on first line of blockquote

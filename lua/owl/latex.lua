@@ -154,7 +154,11 @@ local function start_latexmk(entry)
 end
 
 -- ---------------------------------------------------------------------------
--- PDF watcher: on change, refresh viewer + parse log + push reload to browser
+-- PDF watcher: parse log for diagnostics only.
+-- Reload signalling is owned by the server's chokidar watcher (registered
+-- alongside the buffer for browser mode) OR by the native viewer's own
+-- file-watch (zathura/Sumatra/Skim/sioyek all reload on their own).
+-- Doing both from the Lua side too caused two reload signals per compile.
 -- ---------------------------------------------------------------------------
 local function watch_pdf(entry)
   local pdf = entry.pdf_path
@@ -166,9 +170,6 @@ local function watch_pdf(entry)
     if stat and stat.mtime.sec ~= last_mtime then
       last_mtime = stat.mtime.sec
       update_diagnostics(entry)
-      -- Broadcast to any browser client watching this buffer
-      server.post('/nvim/reload-pdf', { id = entry.id })
-      -- If viewer is a native one, they auto-reload on file change themselves.
     end
   end
 

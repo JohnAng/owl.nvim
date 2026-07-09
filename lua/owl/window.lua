@@ -111,29 +111,49 @@ function M.tile(id, url)
 end
 
 -- ---------------------------------------------------------------------------
--- Close a previously launched preview (kills the browser process).
+-- Untile: kill the tracked browser AND restore the terminal to its saved rect.
+-- Delegates to untile-window.ps1 which reads the marker written at tile time.
 -- ---------------------------------------------------------------------------
+local function untile_script_path()
+  local server = require('owl.server')
+  return server.plugin_root() .. '/scripts/untile-window.ps1'
+end
+
 function M.close(id)
   local t = tracked[id]
   if not t then return end
   tracked[id] = nil
 
-  local kill_cmd
-  if t.pid and (os_util.is_windows() or os_util.is_wsl()) then
-    kill_cmd = { 'powershell.exe', '-NoProfile', '-Command',
-      string.format("Stop-Process -Id %d -Force -ErrorAction SilentlyContinue", t.pid) }
-  elseif t.data_dir and (os_util.is_windows() or os_util.is_wsl()) then
-    -- Fallback: kill anything using our data-dir marker
-    kill_cmd = { 'powershell.exe', '-NoProfile', '-Command', string.format(
-      "Get-CimInstance Win32_Process | Where-Object {$_.CommandLine -match [regex]::Escape('%s')} | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }",
-      t.data_dir:gsub("'", "''")
-    )}
-  end
+  if not (os_util.is_windows() or os_util.is_wsl()) then return end
 
-  if kill_cmd then
-    vim.fn.jobstart(kill_cmd, { detach = true })
-    log.debug('tile: closed', id)
-  end
+  local script = untile_script_path()
+  local file_arg = script
+  if os_util.is_wsl() then file_arg = wslpath_w(script) end
+
+  local cmd = { 'powershell.exe',
+    '-NoProfile', '-ExecutionPolicy', 'Bypass',
+    '-File', file_arg,
+    '-NvimPid', tostring(vim.fn.getpid()),
+    '-KillBrowser',
+  }
+
+  vim.fn.jobstart(cmd, {
+    stdout_buffered = true,
+    on_stdout = function(_, data)
+      if not data then return end
+      for _, line in ipairs(data) do
+        if line and line ~= '' then log.debug('untile:', line) end
+      end
+    end,
+    on_stderr = function(_, data)
+      if not data then return end
+      for _, line in ipairs(data) do
+        if line and line ~= '' then log.warn('untile stderr:', line) end
+      end
+    end,
+  })
+
+  log.info('tile: closed and restored terminal geometry')
 end
 
 function M.close_all()
